@@ -15,6 +15,7 @@
 #include "pixmap.h"
 #include "wmgr.h"
 #include "x_gem.h"
+#include "colormap.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -320,6 +321,8 @@ WindDrawPmap (PIXMAP * pmap, PXY orig, p_PRECT sect)
 	#define d_rd pxy[3]
 	int  d;
 	
+	printf( "WindDrawPmap P:%lX\n", pmap );
+
 	if (offs.x >= pmap->W) offs.x %= pmap->W;
 	if (offs.y >= pmap->H) offs.y %= pmap->H;
 	
@@ -434,7 +437,7 @@ draw_brdr (WINDOW * wind, PRECT * work, PRECT * area, PRECT * sect, int num)
 	if (GrphIntersectP (brdr + n, area)) n++;
 	else if (!n)                          return;
 	
-	vsf_color (GRPH_Vdi, wind->BorderPixel);
+	VSF_COLOR (GRPH_Vdi, wind->BorderPixel);
 	v_hide_c  (GRPH_Vdi);
 	do {
 		vs_clip_pxy (GRPH_Vdi, (PXY*)(sect++));
@@ -462,7 +465,7 @@ draw_wind (WINDOW * wind, PRECT * work,
 	if (GrphIntersectP (work, area)) {
 		if (wind->hasBackGnd) {
 			if (!wind->hasBackPix) {
-				vsf_color (GRPH_Vdi, wind->Back.Pixel);
+				VSF_COLOR (GRPH_Vdi, wind->Back.Pixel);
 			}
 			nEvn = WindDrawBgnd (wind, orig, work, sect, nClp, exps);
 		
@@ -500,6 +503,8 @@ WindDrawSection (WINDOW * wind, const GRECT * clip)
 	PRECT * sect;  // list of sections to be drawn
 	short   nClp;  // list length
 	
+	printf ( "WindDrawSection W:%lX\n", wind );
+
 	vswr_mode (GRPH_Vdi, MD_REPLACE);
 	
 	if (wind->GwmDecor) {
@@ -575,7 +580,9 @@ WindPutMono (p_WINDOW wind, p_GC gc, p_GRECT rct, p_MFDB src)
 	PXY     orig;
 	GRECT * clip;
 	CARD16  nClp;
-	
+
+	printf ( "WindPutMono G:%lX\n", gc );
+
 	if (gc->ClipNum > 0) {
 		clip = alloca (sizeof(GRECT) * gc->ClipNum);
 		nClp = GrphInterList (clip, (rct +1),1, gc->ClipRect,gc->ClipNum);
@@ -618,6 +625,8 @@ WindPutColor (p_WINDOW wind, p_GC gc, p_GRECT rct, p_MFDB src)
 	GRECT * clip;
 	CARD16  nClp;
 	
+    printf ( "WindPutColor G:%lX\n", gc );
+
 	if (gc->ClipNum > 0) {
 		clip = alloca (sizeof(GRECT) * gc->ClipNum);
 		nClp = GrphInterList (clip, (rct +1),1, gc->ClipRect,gc->ClipNum);
@@ -713,6 +722,8 @@ WindPutImg (p_WINDOW wind, p_GC gc, p_GRECT rct, p_MFDB src,
 	CARD16  nClp;
 	PXY     offs = { rct[0].x - rct[1].x - orig.x, rct[0].y - rct[1].y - orig.y };
 	
+	printf ( "WindPutImg G:%lX\n", gc );
+
 	if (gc->ClipNum > 0) {
 		CARD16  n = gc->ClipNum;
 		GRECT * c = gc->ClipRect;
@@ -790,7 +801,7 @@ WindScroll (p_WINDOW wind, p_GC gc, GRECT * rect,
 	
 	if (!wind->hasBackPix) {
 		vswr_mode (GRPH_Vdi, MD_REPLACE);
-		vsf_color (GRPH_Vdi, wind->Back.Pixel);
+		VSF_COLOR (GRPH_Vdi, wind->Back.Pixel);
 	}
 	while (nSct--) {
 		PRECT * dest;
@@ -979,7 +990,7 @@ RQ_ClearArea (CLIENT * clnt, xClearAreaReq * q)
 				if (wind->hasBackGnd) {
 					if (!wind->hasBackPix) {
 						vswr_mode (GRPH_Vdi, MD_REPLACE);
-						vsf_color (GRPH_Vdi, wind->Back.Pixel);
+						VSF_COLOR (GRPH_Vdi, wind->Back.Pixel);
 					}
 					do {
 						CARD16 n = WindDrawBgnd (wind, orig, sect++, area, num, exps);

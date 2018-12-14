@@ -15,6 +15,7 @@
 #include "gcontext.h"
 #include "grph.h"
 #include "x_gem.h"
+#include "colormap.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -73,7 +74,7 @@ RQ_PutImage (CLIENT * clnt, xPutImageReq * q)
 			
 			if (q->depth == 1) {   // all possible formats are matching
 				
-				DEBUG (PutImage, " '%s' %c:%lX G:%lX [%i+%i,%i/%u,%u*%u] = %lu\n"
+				PRINT (PutImage, " '%s' %c:%lX G:%lX [%i+%i,%i/%u,%u*%u] = %lu\n"
 				       "          [%i,%i/%i,%i] -> [%i,%i/%i,%i]",
 				       (q->format == XYBitmap ? "Bitmap" :
 				        q->format == XYPixmap ? "XYPixmap" :
@@ -100,13 +101,29 @@ RQ_PutImage (CLIENT * clnt, xPutImageReq * q)
 				
 			} else { // q->format == ZPixmap
 				
-				DEBUG (PutImage, " '%s' %c:%lX G:%lX [%i+%i,%i/%u,%u*%u] = %lu\n"
-				       "          [%i,%i/%i,%i] -> [%i,%i/%i,%i]",
+				PRINT (PutImage, " '%s' %c:%lX G:%lX [%i+%i,%i/%u,%u*%u] = %lu\n"
+				       "          [%i,%i/%i,%i] -> [%i,%i/%i,%i] %s",
 				       "ZPixmap", (draw.p->isWind ? 'W' : 'P'), q->drawable, q->gc,
 				       q->dstX, q->leftPad, q->dstY, q->width, q->height, q->depth,
 				       (q->length *4) - sizeof (xPutImageReq),
-				       r[0].x,r[0].y,r[0].w,r[0].h, r[1].x,r[1].y,r[1].w,r[1].h);
+				       r[0].x,r[0].y,r[0].w,r[0].h, r[1].x,r[1].y,r[1].w,r[1].h,
+                       (draw.p->isWind) ? "Window" : "Pixmap");
 				
+				//if(q->depth == 32 && draw.p->isWind) {
+				//	char *buf = (char *)(mfdb.fd_addr) + 1;
+				//	char *stop = buf + mfdb.fd_w*mfdb.fd_h*4;
+
+				//	printf("    ... Modifying from %p to %p\n", buf, stop);
+				//	while(buf < stop) {
+				//		char tmp = buf[2];
+				//		buf[2] = buf[0];
+				//		buf[0] = tmp;
+				//		buf += 4;
+				//		
+				//	}
+				//} 
+					
+			
 				if (draw.p->isWind) WindPutColor (draw.Window, gc, r, &mfdb);
 				else                PmapPutColor (draw.Pixmap, gc, r, &mfdb);
 				
@@ -147,7 +164,7 @@ RQ_GetImage (CLIENT * clnt, xGetImageReq * q)
 	PRECT      rec[2] = { {{q->x, q->y}, {q->width -1, q->height -1}},
 	                      {{0, 0}, } };
 	BOOL       ok     = xFalse;
-	
+
 	if ((q->drawable & ~RID_MASK) && !(draw = DrawFind(q->drawable)).p) {
 		Bad(Drawable, q->drawable, GetImage,);
 		
@@ -344,7 +361,7 @@ RQ_CopyArea (CLIENT * clnt, xCopyAreaReq * q)
 	p_DRAWABLE src_d = DrawFind(q->srcDrawable);
 	p_DRAWABLE dst_d = DrawFind(q->dstDrawable);
 	GC       * gc    = GcntFind(q->gc);
-	
+
 	if (!src_d.p) {
 		Bad(Drawable, q->srcDrawable, CopyArea,);
 		
@@ -492,7 +509,7 @@ return;
 					if (wind->hasBackGnd) {
 						if (!wind->hasBackPix) {
 							vswr_mode (GRPH_Vdi, MD_REPLACE);
-							vsf_color (GRPH_Vdi, wind->Back.Pixel);
+							VSF_COLOR (GRPH_Vdi, wind->Back.Pixel);
 						}
 						do {
 							PRECT area;
@@ -551,8 +568,7 @@ return;
 		
 		if (sect) WindClipOff();
 		
-		if (debug) {
-			PRINT (CopyArea," G:%lX %c:%lX [%i,%i/%u,%u] to %c:%lX (%i,%i)\n"
+			DEBUG (CopyArea," G:%lX %c:%lX [%i,%i/%u,%u] to %c:%lX (%i,%i)\n"
 				             "          [%i,%i/%i,%i] -> [%i,%i/%i,%i]  %c <%02X>",
 			       q->gc, (src_d.p->isWind ? 'W' : 'P'), q->srcDrawable,
 			       q->srcX, q->srcY, q->width, q->height,
@@ -561,7 +577,7 @@ return;
 				    rect[0].x,rect[0].y,rect[0].w,rect[0].h,
 				    rect[1].x,rect[1].y,rect[1].w,rect[1].h,
 				    (gc->GraphExpos ? '*' : '-'), action);
-		}
+		
 	}
 }
 
@@ -588,7 +604,7 @@ RQ_CopyPlane (CLIENT * clnt, xCopyPlaneReq * q)
 	p_DRAWABLE dst_d = DrawFind(q->dstDrawable);
 	GC       * gc    = GcntFind (q->gc);
 	int        plane;
-	
+
 	if (!src_d.p) {
 		Bad(Drawable, q->srcDrawable, CopyPlane,);
 		
@@ -625,7 +641,7 @@ RQ_CopyPlane (CLIENT * clnt, xCopyPlaneReq * q)
 			} else { // src_d is Pixmap
 				MFDB mfdb = *PmapMFDB(src_d.Pixmap);
 				
-				DEBUG (CopyPlane," #%i(0x%lx)"
+				PRINT (CopyPlane," #%i(0x%lx)"
 				       " G:%lX %c:%lX [%i,%i/%u,%u *%i] to %c:%lX %i,%i",
 				       plane, q->bitPlane, q->gc, (src_d.p->isWind ? 'W' : 'P'),
 				       q->srcDrawable, q->srcX, q->srcY, q->width, q->height,
@@ -645,13 +661,13 @@ RQ_CopyPlane (CLIENT * clnt, xCopyPlaneReq * q)
 			}
 			
 		}
-		if (debug) {
-			PRINT (- X_CopyPlane," #%i(0x%lx)"
+		
+			DEBUG (- X_CopyPlane," #%i(0x%lx)"
 			       " G:%lX %c:%lX [%i,%i/%u,%u] to %c:%lX %i,%i",
 			       plane, q->bitPlane, q->gc, (src_d.p->isWind ? 'W' : 'P'),
 			       q->srcDrawable, q->srcX, q->srcY, q->width, q->height,
 			       (dst_d.p->isWind ? 'W' : 'P'), q->dstDrawable, q->dstX, q->dstY);
-		}
+		
 		/*
 		 *  Hacking: GraphicsExposure should be generated if necessary instead!
 		 */

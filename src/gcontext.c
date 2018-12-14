@@ -26,10 +26,14 @@
 void
 GcntDelete (p_GC gc, p_CLIENT clnt)
 {
+	if (gc == NULL) { printf("failed GC delete\n"); return; }
+
 	if (gc->Tile)     PmapFree (gc->Tile, NULL);
 	if (gc->Stipple)  PmapFree (gc->Stipple, NULL);
 	if (gc->ClipMask) PmapFree (gc->ClipMask, NULL);
 	if (gc->ClipRect) free     (gc->ClipRect);
+
+	if (clnt == NULL) { printf("failed GC delete on clnt\n"); return; }
 	XrscDelete (clnt->Fontables, gc);
 }
 
@@ -307,7 +311,7 @@ RQ_CreateGC (CLIENT * clnt, xCreateGCReq * q)
 		Bad(Alloc,, CreateGC,);
 	
 	} else { //..................................................................
-	
+
 		DEBUG (CreateGC,"- G:%lX for D:%lX", q->gc, q->drawable);
 		
 		gc->isFont = xFalse;

@@ -102,6 +102,8 @@ PmapVdi (p_PIXMAP pmap, p_GC gc, BOOL fonts)
 		short w_out[57];
 		short hdl = GRPH_Handle;
 		
+		printf ("PmapVdi: w,h=%d%d\n", GRPH_muWidth,  GRPH_muHeight);
+
 		v_opnbm (w_in, PmapMFDB(pmap), &hdl, w_out);
 		if (hdl <= 0) {
 			extern CLIENT * CLNT_Requestor;
@@ -135,7 +137,7 @@ PmapVdi (p_PIXMAP pmap, p_GC gc, BOOL fonts)
 			pmap->Fonts = xTrue;
 		}
 		vst_font    (pmap->Vdi, gc->FontIndex);
-		vst_color   (pmap->Vdi, gc->Foreground);
+		VST_COLOR   (pmap->Vdi, gc->Foreground);
 		vst_effects (pmap->Vdi, gc->FontEffects);
 		if (gc->FontWidth) {
 			vst_height (pmap->Vdi, gc->FontPoints, &dmy,&dmy,&dmy,&dmy);

@@ -1,30 +1,33 @@
-WARN    = -Wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wshadow \
-          -Werror #-Wcast-qual
-CCOPTS  = -D_TRACE -g -O2 -fstrength-reduce #-DNODEBUG
-CCFLAGS = -funsigned-char -fomit-frame-pointer -m68030 \
+WARN    = -Wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wshadow 
+          # -Werror #-Wcast-qual
+CCOPTS  = -DTRACE -g -O0 -fstrength-reduce #-DNODEBUG
+CCFLAGS = -funsigned-char -m68030 \
           -I. -I../include -I/usr/GEM/include \
           $(CCOPTS) $(WARN)
 
 #SHELL  = /bin/ash
 #TMPDIR = /ram/tmp
 
-CC  = gcc
-CXX = g++ #-pipe
-LD  = gcc -g
-AR  = ar rs
+CC  = /usr/bin/gcc
+CXX = /usr/bin/g++ #-pipe
+LD  = /usr/bin/gcc -g
+AR  = /usr/bin/ar rs
 
 PRG    = X.app
 OBJDIR = ../obj
-LIBS   = gem socket iio
+LIBS   = gem iio
+#socket
 DEPEND = $(OBJDIR)/depends
 
 LDFLAGS = -v $(CCOPTS) -L/usr/GEM/lib
+STACKSIZE = 512k
 
-
-$(OBJDIR)/%.o: %.c ; rm -f $(PRG) ; $(CC) $(CCFLAGS) -D_$(<:.c=)_ -c $< -o $@
+$(OBJDIR)/%.o: %.c ; $(CC) $(CCFLAGS) -D_$(<:.c=)_ -c $< -o $@
 
 
 ALL: $(PRG)
+
+all: $(PRG)
 
 SRC = Atom.c Cursor.c Pointer.c Property.c Prop_ICCC.c Request.c \
       clnt.c clnt_swap.c colormap.c drawable.c draw_img.c \
@@ -43,7 +46,7 @@ $(PRG): $(OBJDIR) $(OBJ) Makefile config.c ../include/version
 	       -DBUILD=\"`cat -s $(OBJDIR)/build`\" \
 	       -o $(OBJDIR)/config.o
 	$(LD) $(LDFLAGS) -o $@ $(OBJ) $(OBJDIR)/config.o $(LIBS:%=-l%)
-	stack -S 128k $@
+	stack -S $(STACKSIZE) $@
 
 
 $(OBJDIR):
@@ -55,7 +58,7 @@ $(OBJDIR):
 	@echo "*** Make $(PRG) ***"
 
 
-clean: ; rm -f *.% *.[bB][aA][kK] ../include/*.%
+clean: ; rm -f *.% *.[bB][aA][kK] ../include/*.% ../obj/*.o
 
 
 #_______________________________________________________________________________

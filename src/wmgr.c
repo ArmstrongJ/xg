@@ -105,7 +105,7 @@ WmgrIntro (BOOL onNoff)
 			                 (_WMGR_P[7] = _WMGR_P[5] + x_height -1),
 			                 _WMGR_P[0], _WMGR_P[1], _WMGR_P[2], _WMGR_P[3] };
 			MFDB  scrn   = { NULL };
-			short clr[2] = { G_BLACK, G_YELLOW };
+			short clr[2] = { G_BLACK, G_GREEN /* YELLOW */ };
 			short wg[4];
 			
 			graf_mouse (BUSYBEE, NULL);
@@ -663,7 +663,7 @@ _Wmgr_DrawIcon (WINDOW * wind, GRECT * clip)
 	
 	if (!clip || GrphIntersect (&work, clip)) {
 		vswr_mode (GRPH_Vdi, MD_REPLACE);
-		vsf_color (GRPH_Vdi, G_LWHITE);
+		VSF_COLOR (GRPH_Vdi, G_LWHITE);
 		v_hide_c  (GRPH_Vdi);
 		wind_get_first (wind->Handle, &sect);
 		while (sect.w > 0  &&  sect.h > 0) {
@@ -760,7 +760,7 @@ desktop_fill (PARMBLK *pblk)
 	
 	if (GrphIntersectP ((PRECT*)&pblk->pb_xc, (PRECT*)&pblk->pb_x)) {
 		vswr_mode (GRPH_Vdi, MD_REPLACE);
-		vsf_color (GRPH_Vdi, pblk->pb_parm);
+		VSF_COLOR (GRPH_Vdi, pblk->pb_parm);
 		v_bar     (GRPH_Vdi, (short*)&pblk->pb_xc);
 	}
 	return pblk->pb_currstate;
@@ -1229,7 +1229,7 @@ WmgrButton (WINDOW * wind)
 		}
 		
 		vswr_mode (GRPH_Vdi, MD_XOR);
-		vsl_color (GRPH_Vdi, G_BLACK);
+		VSL_COLOR (GRPH_Vdi, G_BLACK);
 		vsl_udsty (GRPH_Vdi, 0xAAAA);
 		vsl_type  (GRPH_Vdi, USERLINE);
 		v_hide_c (GRPH_Vdi);

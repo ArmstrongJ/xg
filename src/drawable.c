@@ -15,6 +15,7 @@
 #include "window.h"
 #include "gcontext.h"
 #include "font.h"
+#include "fontable.h"
 #include "grph.h"
 #include "x_gem.h"
 #include "gemx.h"
@@ -23,6 +24,7 @@
 
 #include <X11/X.h>
 
+#include "colormap.h"
 
 //==============================================================================
 void
@@ -220,7 +222,7 @@ RQ_FillPoly (CLIENT * clnt, xFillPolyReq * q)
 		}
 		if (nClp && gc_mode (&color, &set, hdl, gc)) {
 			if (set) {
-				vsf_color (hdl, color);
+				VSF_COLOR (hdl, color);
 			}
 			do {
 				vs_clip_pxy (hdl, (PXY*)(sect++));
@@ -287,7 +289,7 @@ RQ_PolyArc (CLIENT * clnt, xPolyArcReq * q)
 			clnt->Fnct->shift_arc (&orig, arc, len, ArcPieSlice);
 			if (set) {
 				vsl_width (hdl, gc->LineWidth);
-				vsl_color (hdl, color);
+				VSL_COLOR (hdl, color);
 			}
 			do {
 				int i;
@@ -355,7 +357,7 @@ RQ_PolyFillArc (CLIENT * clnt, xPolyFillArcReq * q)
 		if (nClp && gc_mode (&color, &set, hdl, gc)) {
 			clnt->Fnct->shift_arc (&orig, arc, len, gc->ArcMode);
 			if (set) {
-				vsf_color (hdl, color);
+				VSF_COLOR (hdl, color);
 			}
 			do {
 				int i;
@@ -423,7 +425,7 @@ RQ_PolyLine (CLIENT * clnt, xPolyLineReq * q)
 		}
 		if (nClp && gc_mode (&color, &set, hdl, gc)) {
 			if (set) {
-				vsl_color (hdl, color);
+				VSL_COLOR (hdl, color);
 				vsl_width (hdl, gc->LineWidth);
 			}
 			do {
@@ -497,7 +499,7 @@ RQ_PolyPoint (CLIENT * clnt, xPolyPointReq * q)
 		}
 		if (nClp && gc_mode (&color, &set, hdl, gc)) {
 			if (set) {
-				vsm_color (hdl, color);
+				VSM_COLOR (hdl, color);
 			}
 			do {
 				vs_clip_pxy (hdl, (PXY*)(sect++));
@@ -581,7 +583,7 @@ RQ_PolyFillRectangle (CLIENT * clnt, xPolyFillRectangleReq * q)
 		}
 		if (nClp && gc_mode (&color, &set, hdl, gc)) {
 			if (set) {
-				vsf_color (hdl, color);
+				VSF_COLOR (hdl, color);
 			}
 			do {
 				int i;
@@ -652,7 +654,7 @@ RQ_PolyRectangle (CLIENT * clnt, xPolyRectangleReq * q)
 		if (nClp && gc_mode (&color, &set, hdl, gc)) {
 			short d = vsl_width (hdl, gc->LineWidth);
 			if (set) {
-				vsl_color (hdl, color);
+				VSL_COLOR (hdl, color);
 			}
 			if (clnt->DoSwap) {
 				size_t  n = len;
@@ -732,7 +734,7 @@ RQ_PolySegment (CLIENT * clnt, xPolySegmentReq * q)
 		}
 		if (nClp && gc_mode (&color, &set, hdl, gc)) {
 			if (set) {
-				vsl_color (hdl, color);
+				VSL_COLOR (hdl, color);
 				vsl_width (hdl, gc->LineWidth);
 			}
 			do {
@@ -797,23 +799,31 @@ _Image_Text (p_DRAWABLE draw, GC * gc,
 		short * arr;
 		if (is8N16) {
 			arr = alloca (sizeof(short) * len);
-			arr = FontTrans_C (arr, text, len, gc->FontFace);
+			if(gc->FontFace)
+				arr = FontTrans_C (arr, text, len, gc->FontFace);
+			else {
+				int ic;
+				
+				for(ic = 0; ic<len; ic++)
+					arr[ic] = (short)( ((char *)text)[ic] );
+			}
 		} else {
 			arr = text;
-			arr = FontTrans_W (arr, text, len, gc->FontFace);
+			if(gc->FontFace)
+				arr = FontTrans_W (arr, text, len, gc->FontFace);
 		}
 		if (!bg_draw) {
 			vswr_mode (hdl, MD_REPLACE);
-			vst_color (hdl, gc->Foreground);
+			VST_COLOR (hdl, gc->Foreground);
 		}
 		do {
 			vs_clip_pxy (hdl, (PXY*)(sect++));
 			if (bg_draw) {
 				vswr_mode  (hdl, MD_ERASE);
-				vst_color  (hdl, gc->Background);
+				VST_COLOR  (hdl, gc->Background);
 				v_gtext16n (hdl, orig, arr, len);
 				vswr_mode  (hdl, MD_TRANS);
-				vst_color  (hdl, gc->Foreground);
+				VST_COLOR  (hdl, gc->Foreground);
 			}
 			v_gtext16n (hdl, orig, arr, len);
 		} while (--nClp);
@@ -870,8 +880,9 @@ RQ_ImageText16 (CLIENT * clnt, xImageTextReq * q)
 
 //------------------------------------------------------------------------------
 static void
-_Poly_Text (p_DRAWABLE draw, GC * gc, BOOL is8N16, xTextElt * t, PXY * pos)
+_Poly_Text (CLIENT * clnt, p_DRAWABLE draw, GC * gc, BOOL is8N16, xTextElt * t, PXY * pos)
 {
+
 	if (t->len) {
 		short   hdl = GRPH_Vdi;
 		PRECT * sect;
@@ -887,7 +898,7 @@ _Poly_Text (p_DRAWABLE draw, GC * gc, BOOL is8N16, xTextElt * t, PXY * pos)
 				orig.x += pos->x;
 				orig.y += pos->y;
 				vst_font    (hdl, gc->FontIndex);
-				vst_color   (hdl, gc->Foreground);
+				VST_COLOR   (hdl, gc->Foreground);
 				vst_effects (hdl, gc->FontEffects);
 				if (gc->FontWidth) {
 					vst_height (hdl, gc->FontPoints, &dmy,&dmy,&dmy,&dmy);
@@ -911,14 +922,26 @@ _Poly_Text (p_DRAWABLE draw, GC * gc, BOOL is8N16, xTextElt * t, PXY * pos)
 			orig = *pos;
 			hdl  = PmapVdi (draw.Pixmap, gc, xTrue);
 		}
+
 		if (nClp) {
 			short * arr;
 			if (is8N16) {
 				arr = alloca (sizeof(short) * t->len);
-				arr = FontTrans_C (arr, (char*)(t +1), t->len, gc->FontFace);
+				
+				if(gc->FontFace)
+					arr = FontTrans_C (arr, (char*)(t +1), t->len, gc->FontFace);
+				else {
+					int ic;
+					for(ic = 0; ic<t->len; ic++)
+						arr[ic] = (short)( ((char *)(t+1))[ic] );
+				}
+
 			} else {
-				arr = (short*)(t +1);
-				arr = FontTrans_W (arr, arr, t->len, gc->FontFace);
+				arr = (short*)(t+1);
+		
+				if(gc->FontFace)
+					arr = FontTrans_W (arr, arr, t->len, gc->FontFace);
+		
 			}
 			vswr_mode (hdl, MD_TRANS);
 			do {
@@ -949,10 +972,16 @@ RQ_PolyText8 (CLIENT * clnt, xPolyTextReq * q)
 		Bad(GC, q->drawable, PolyText8,);
 	
 	} else if (gc->ClipNum >= 0) {
+		xTextElt *tp;
+
 		DEBUG (PolyText8," %c:%lX G:%lX (%i,%i)",
 		       (draw.p->isWind ? 'W' : 'P'), q->drawable, q->gc, q->x, q->y);
-		
-		_Poly_Text (draw, gc, xTrue, (xTextElt*)(q +1), (PXY*)&q->x);
+
+		tp = (xTextElt*)(q + 1);
+		while(tp != NULL) {
+		    _Poly_Text (clnt, draw, gc, xTrue, tp, (PXY*)&q->x);
+			tp = NULL; // We actually need to iterate and handle fonts sometime...
+		}
 	}
 }
 
@@ -973,6 +1002,6 @@ RQ_PolyText16 (CLIENT * clnt, xPolyTextReq * q)
 		DEBUG (PolyText16," %c:%lX G:%lX (%i,%i)",
 		       (draw.p->isWind ? 'W' : 'P'), q->drawable, q->gc, q->x, q->y);
 		
-		_Poly_Text (draw, gc, xFalse, (xTextElt*)(q +1), (PXY*)&q->x);
+		_Poly_Text (clnt, draw, gc, xFalse, (xTextElt*)(q +1), (PXY*)&q->x);
 	}
 }

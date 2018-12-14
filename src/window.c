@@ -853,6 +853,16 @@ RQ_CreateWindow (CLIENT * clnt, xCreateWindowReq * q)
 	WINDOW * pwnd = NULL;
 	WINDOW * wind = NULL;
 	
+	if((short)q->width <= 0)
+		q->width = (short)480;
+	if((short)q->height <= 0)
+		q->height = (short)320;
+
+	if((short)q->x < 0)
+		q->x = (short)30;
+	if((short)q->y < 0)
+		q->y = (short)30;
+
 	if (DrawFind (q->wid).p) {
 		Bad(IDChoice, q->wid, CreateWindow,);
 		
@@ -861,9 +871,8 @@ RQ_CreateWindow (CLIENT * clnt, xCreateWindowReq * q)
 		
 	} else if ((short)q->width <= 0  ||  (short)q->height <= 0) {
 		Bad(Value, (short)((short)q->width <= 0 ? q->width : q->height),
-		           CreateWindow," width = %i height = %i",
-		           (short)q->width, (short)q->height);
-		
+		          CreateWindow," width = %i height = %i",
+		          (short)q->width, (short)q->height);
 	/* check visual */
 	/* check depth */
 	
@@ -871,9 +880,9 @@ RQ_CreateWindow (CLIENT * clnt, xCreateWindowReq * q)
 		Bad(Alloc,, CreateWindow,"(W:%lX)", q->wid);
 	
 	} else {
-//		PRINT (CreateWindow,"-(%u) W:%lX [%i,%i/%u,%u/%u:%u] on W:%lX with V:%lX",
-//		       q->class, q->wid, q->x, q->y, q->width, q->height, q->borderWidth,
-//		       q->depth, q->parent, q->visual);
+		PRINT (CreateWindow,"-(%u) W:%lX [%i,%i/%u,%u/%u:%u] on W:%lX with V:%lX",
+		       q->class, q->wid, q->x, q->y, q->width, q->height, q->borderWidth,
+		       q->depth, q->parent, q->visual);
 		
 		wind->isWind = xTrue;
 		

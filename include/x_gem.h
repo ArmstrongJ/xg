@@ -49,7 +49,6 @@ short wind_set_proc (int WindowHandle, CICONBLK *icon);
 
 #define SHUT_COMPLETED   60
 #define RESCHG_COMPLETED 61
-#define RESCH_COMPLETED  61
 #define AP_DRAGDROP      63
 #define SH_WDRAW         72
 #define SC_CHANGED       80
@@ -57,6 +56,11 @@ short wind_set_proc (int WindowHandle, CICONBLK *icon);
 #define FNT_CHANGED      83
 #define COLORS_CHANGED   84
 #define CH_EXIT          90
+
+
+#ifndef RESCH_COMPLETED
+#define RESCH_COMPLETED  61
+#endif
 
 
 #endif __X_GEM_H__

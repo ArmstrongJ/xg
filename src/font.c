@@ -215,7 +215,6 @@ RQ_ListFonts (CLIENT * clnt, xListFontsReq * q)
 	       q->nbytes, (char*)(q +1), q->maxNames);
 	
 	_Font_Alias (buf, patt, q->nbytes);
-	
 	while (face  &&  num < q->maxNames) {
 		if (!fnmatch (buf, face->Name, FNM_NOESCAPE|FNM_CASEFOLD)) {
 			size_t len  = face->Length +1;
@@ -238,6 +237,7 @@ RQ_ListFonts (CLIENT * clnt, xListFontsReq * q)
 	}
 	r->nFonts = num;
 	ClntReply (ListFonts, size, ".");
+    PRINT( ListFonts, " reply nFonts=%d,%d size=%d", (int)r->nFonts, (int)num, (int)size);
 }
 
 

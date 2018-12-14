@@ -14,7 +14,7 @@
 #include "x_gem.h"
 #include "wmgr.h"
 #include "Property.h"
-
+#include "colormap.h"
 
 //------------------------------------------------------------------------------
 static short
@@ -195,14 +195,23 @@ WmgrDrawDeco (WINDOW * wind, PRECT * work, PRECT * area, PRECT * sect, int num)
 	wht->y = 0;
 	blk->y = 0;
 	
-	vsf_color (GRPH_Vdi, G_LWHITE);
+	if(GRPH_Depth <= 8)
+	    vsf_color (GRPH_Vdi, G_LWHITE);
+    else
+        VSF_COLOR (GRPH_Vdi, 0xffffffL);
+
 	v_hide_c  (GRPH_Vdi);
 	do {
 		vs_clip_pxy (GRPH_Vdi, (PXY*)(sect++));
 		for (i = 0; i < f; v_bar (GRPH_Vdi, (short*)&frm[i++].lu));
 		drk = __d + d;
 		if (drk->y) {
-			vsl_color (GRPH_Vdi, G_LBLACK);
+
+			if(GRPH_Depth <= 8)
+			    vsl_color (GRPH_Vdi, G_LBLACK);
+			else
+				VSL_COLOR (GRPH_Vdi, 0x333333L);
+
 			do {
 				v_pline (GRPH_Vdi, drk->y, (short*)(drk +1));
 				drk += drk->y +1;
@@ -210,7 +219,11 @@ WmgrDrawDeco (WINDOW * wind, PRECT * work, PRECT * area, PRECT * sect, int num)
 		}
 		wht = __w;
 		if (wht->y) {
-			vsl_color (GRPH_Vdi, G_WHITE);
+			if(GRPH_Depth <= 8)
+			    vsl_color (GRPH_Vdi, G_WHITE);
+			else
+				VSL_COLOR (GRPH_Vdi, 0xe0e0e0L);
+
 			do {
 				v_pline (GRPH_Vdi, wht->y, (short*)(wht +1));
 				wht += wht->y +1;
@@ -218,7 +231,11 @@ WmgrDrawDeco (WINDOW * wind, PRECT * work, PRECT * area, PRECT * sect, int num)
 		}
 		blk = __b;
 		if (blk->y) {
-			vsl_color (GRPH_Vdi, G_BLACK);
+			if(GRPH_Depth <= 8)
+				vsl_color (GRPH_Vdi, G_BLACK);
+			else
+				VSL_COLOR (GRPH_Vdi, 0x050505);
+
 			do {
 				v_pline (GRPH_Vdi, blk->y, (short*)(blk +1));
 				blk += blk->y +1;

@@ -21,7 +21,8 @@
 #include <X11/Xatom.h>
 
 
-#define MAX_ATOM   200
+#define MAX_ATOM   4096
+/* Was 200 */
 
 ATOM * ATOM_Table[MAX_ATOM +2] = {
 #	define ENTRY(e) \

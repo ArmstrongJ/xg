@@ -28,6 +28,12 @@ static CARD8 _CMAP_TransGrey[32] = {
 };
 static RGB   _CMAP_VdiRGB[256];
 
+#ifdef DEBUG
+#undef DEBUG
+#endif
+
+# define DEBUG( req, frm, args...)   PRINT (req, frm, ## args) 
+
 
 //==============================================================================
 // Graphic depth depending functions for converting RGB color values to a pixel.
@@ -157,7 +163,9 @@ static CARD32
 _lookup_24_32 (RGB * dst, const RGB * src)
 {
 	CARD32 pixel = ((CARD32)(src->r & 0xF800) <<8)
-	             | (src->g & 0xF800) | (src->b >>8);
+             | (src->g & 0xF800) | (src->b >>8);
+
+	/* printf("_lookup_24_32: rgb=%d,%d,%d -> pixel=%x\n", src->r, src->g, src->b, pixel); */
 	
 	*dst = *src;
 	
@@ -170,10 +178,10 @@ _lookup_24_32 (RGB * dst, const RGB * src)
 // bitmap operations to VDI color indexes.  Only necessary for depths higher
 // than 8 planes.
 //
-CARD16 (*Cmap_PixelIdx) (CARD32 pixel) = (void*)GrphError;
+CARD32 (*Cmap_PixelIdx) (CARD32 pixel) = (void*)GrphError;
 
 //------------------------------------------------------------------------------
-static CARD16
+static CARD32
 _pixel_15 (CARD32 pixel)
 {
 	CARD16 r   = pixel & 0xF800;
@@ -181,28 +189,29 @@ _pixel_15 (CARD32 pixel)
 	CARD16 b   = pixel << 11;
 	RGB    src = { r | (r >>5), g | (g <<5), b | (b >>5) }, dst;
 	
-	return _lookup_8 (&dst, &src);
+	return _lookup_15 (&dst, &src);
 }
 
 //------------------------------------------------------------------------------
-static CARD16
+static CARD32
 _pixel_16 (CARD32 pixel)
 {
 	CARD16 r   = pixel & 0xF800;
 	CARD16 g   = pixel & 0x07E0;
 	CARD16 b   = pixel << 11;
 	RGB    src = { r | (r >>5), (g >>1) | (g <<5), b | (b >>5) }, dst;
-	
-	return _lookup_8 (&dst, &src);
+
+	return _lookup_16 (&dst, &src);
 }
 
 //------------------------------------------------------------------------------
-static CARD16
+static CARD32
 _pixel_24_32 (CARD32 pixel)
 {
 	RGB src = { (pixel >>8) & 0xFF00, pixel & 0xFF00, pixel <<8 }, dst;
-	
-	return _lookup_8 (&dst, &src);
+
+    /* printf("r=%d g=%d b=%d\n", src.r, src.g, src.b); */
+	return _lookup_24_32 (&dst, &src);
 }
 
 
