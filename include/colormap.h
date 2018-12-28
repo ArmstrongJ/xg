@@ -42,6 +42,8 @@ static inline CARD32 CmapPixelIdx (CARD32 pixel, CARD16 depth)
 
 static inline void vsx_color(short (*func)(VdiHdl, short), int16_t cindex, CARD16 hdl, CARD32 color)
 {
+static int incindex;
+
 	if(GRPH_Depth > 8) {
 		int16_t rgb[3];
 		int16_t i;
@@ -54,8 +56,10 @@ static inline void vsx_color(short (*func)(VdiHdl, short), int16_t cindex, CARD1
          *        color, rgb[0], rgb[1], rgb[2], cindex);
 		 */
 
-		vs_color(hdl, cindex, (int16_t *)rgb);
-		func(hdl, cindex);
+		incindex++; if(incindex > 255 || incindex < 100) incindex = 100;
+
+		vs_color(hdl, incindex, (int16_t *)rgb);
+		func(hdl, incindex);
 	} else {
 		func(hdl, (int16_t)color);
 	}
