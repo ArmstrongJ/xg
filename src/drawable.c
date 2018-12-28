@@ -1,3 +1,8 @@
+
+
+
+
+
 //==============================================================================
 //
 // drawable.c
@@ -812,19 +817,19 @@ _Image_Text (p_DRAWABLE draw, GC * gc,
 			if(gc->FontFace)
 				arr = FontTrans_W (arr, text, len, gc->FontFace);
 		}
-		if (!bg_draw) {
+		//if (!bg_draw) {
 			vswr_mode (hdl, MD_REPLACE);
 			VST_COLOR (hdl, gc->Foreground);
-		}
+		//}
 		do {
 			vs_clip_pxy (hdl, (PXY*)(sect++));
-			if (bg_draw) {
+			//if (bg_draw) {
 				vswr_mode  (hdl, MD_ERASE);
 				VST_COLOR  (hdl, gc->Background);
 				v_gtext16n (hdl, orig, arr, len);
 				vswr_mode  (hdl, MD_TRANS);
 				VST_COLOR  (hdl, gc->Foreground);
-			}
+			//}
 			v_gtext16n (hdl, orig, arr, len);
 		} while (--nClp);
 		vs_clip_off (hdl);
@@ -842,7 +847,7 @@ RQ_ImageText8 (CLIENT * clnt, xImageTextReq * q)
 {
 	p_DRAWABLE draw = DrawFind (q->drawable);
 	p_GC       gc   = GcntFind (q->gc);
-	
+
 	if (!draw.p) {
 		Bad(Drawable, q->drawable, ImageText8,);
 		
@@ -863,7 +868,7 @@ RQ_ImageText16 (CLIENT * clnt, xImageTextReq * q)
 {
 	p_DRAWABLE draw = DrawFind (q->drawable);
 	p_GC       gc   = GcntFind (q->gc);
-	
+
 	if (!draw.p) {
 		Bad(Drawable, q->drawable, ImageText16,);
 		
@@ -964,7 +969,7 @@ RQ_PolyText8 (CLIENT * clnt, xPolyTextReq * q)
 {
 	p_DRAWABLE draw = DrawFind (q->drawable);
 	p_GC       gc   = GcntFind (q->gc);
-	
+
 	if (!draw.p) {
 		Bad(Drawable, q->drawable, PolyText8,);
 		
@@ -991,7 +996,7 @@ RQ_PolyText16 (CLIENT * clnt, xPolyTextReq * q)
 {
 	p_DRAWABLE draw = DrawFind (q->drawable);
 	p_GC       gc   = GcntFind (q->gc);
-	
+
 	if (!draw.p) {
 		Bad(Drawable, q->drawable, PolyText16,);
 		

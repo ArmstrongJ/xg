@@ -13,6 +13,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -130,6 +131,7 @@ FONTFACE *
 _Font_Create (const char * name, size_t len, unsigned type, BOOL sym, BOOL mono)
 {
 	FONTFACE * face = malloc (sizeof(FONTFACE) + len);
+
 	if (face) {
 		face->Next      = NULL;
 		face->Type      = type;
@@ -139,6 +141,7 @@ _Font_Create (const char * name, size_t len, unsigned type, BOOL sym, BOOL mono)
 		face->Length    = len;
 		memcpy (face->Name, name, len +1);
 	}
+
 	return face;
 }
 
@@ -147,6 +150,8 @@ void
 _Font_Bounds (FONTFACE * face, BOOL mono, short * o_hdl, MFDB * mfdb)
 {
 	short dist[5], width, minADE, maxADE, dmy[3];
+
+	int16_t res;
 	
 	vqt_fontinfo (GRPH_Vdi, &minADE, &maxADE, dist, &width, dmy);
 	face->HalfLine =  dist[2];
@@ -158,20 +163,22 @@ _Font_Bounds (FONTFACE * face, BOOL mono, short * o_hdl, MFDB * mfdb)
 	face->MinDesc  =  0;
 	face->MinChr   =  minADE;
 	face->MaxChr   =  maxADE;
-	vqt_width (GRPH_Vdi, '.', &dist[0], &dist[1], &dist[2]);
-	face->MinWidth = dist[0] - dist[1] - dist[2];
-	face->MinLftBr = dist[1];
-	face->MinRgtBr = dist[0] - dist[2];
+
+	res = vqt_width (GRPH_Vdi, '.', &dist[0], &dist[1], &dist[2]);
+	
+	face->MinWidth = dist[0];
+    	
+	face->MinLftBr = 0; 
+	face->MinRgtBr = 0;
 	if (mono) {
 		face->MaxWidth = face->MinWidth;
 		face->MaxLftBr = face->MinLftBr;
 		face->MaxRgtBr = face->MinRgtBr;
 	} else {
 		vqt_width (GRPH_Vdi, 'W', &dist[0], &dist[1], &dist[2]);
-		face->MaxWidth = dist[0] - dist[1] - dist[2];
-	//	if (face->MaxWidth < width) face->MaxWidth = width;
-		face->MaxLftBr = dist[1];
-		face->MaxRgtBr = dist[0] - dist[2];
+		face->MaxWidth = dist[0]; 
+		face->MaxLftBr = 0;
+		face->MaxRgtBr = 0;
 	}
 	face->MinAttr = face->MaxAttr = 0;
 	
@@ -330,18 +337,19 @@ _read_fontdb (FILE * f_db)
 		int      id, pre;
 		char     c;
 		int      len = strlen (buf);
+
 		if (!len || buf[0] == '#') continue;
 		if (buf[len-1] == '\n') buf[--len] = '\0';
-		
+
 		if (sscanf (buf, "%i: %u,%u,%u%c%n",
-		            &id, &type, &isSymbol, &isMono, &c,&pre) == 5  &&  c == ' ') {
+		            &id, &type, &isSymbol, &isMono, &c,&pre) == 5  &&  c == ' ') 
+		{
 			FONT_DB * db;
+			
 			len -= pre;
 			if (face) {
-				printf ("A\n");
 				break;
 			} else if (!(db = malloc (sizeof(FONT_DB) + len))) {
-				printf ("a\n");
 				break;
 			}
 			db->next = font_db;
@@ -354,20 +362,16 @@ _read_fontdb (FILE * f_db)
 			font_db = db;
 		
 		} else if (!font_db) {
-			printf ("B\n");
 			break;
 		
 		} else if (buf[0] == '-') {
 			if (face) {
-				printf ("C\n");
 				break;
 			} else if (!(face = _Font_Create (buf, len, type, isSymbol, isMono))) {
-				printf ("c\n");
 				break;
 			}
 		
 		} else if (!face) {
-			printf ("D\n");
 			break;
 		
 		} else if (sscanf (buf, "%i, %hi,%hi, %hi  %hi,%hi %hi,%hi"
@@ -378,7 +382,8 @@ _read_fontdb (FILE * f_db)
 				             &face->MinWidth, &face->MinAsc, &face->MinDesc,
 				             &face->MinLftBr, &face->MinRgtBr,
 				             &face->MaxWidth, &face->MaxAsc, &face->MaxDesc,
-				             &face->MaxLftBr, &face->MaxRgtBr) == 18) {
+				             &face->MaxLftBr, &face->MaxRgtBr) == 18) 
+		{
 			face->CharSet = NULL;
 			face->Index   = font_db->id;
 			face->Effects = 0;
@@ -391,7 +396,6 @@ _read_fontdb (FILE * f_db)
 		} else {
 			if (face) free (face);
 			face = NULL;
-			printf ("d\n");
 			break;
 		}
 	}	
@@ -454,6 +458,7 @@ FontInit (short count)
 		fprintf (f_db, "# fonts.db; %s\n", GLBL_Version);
 	}
 	printf ("  loaded %i font%s\n", count, (count == 1 ? "" : "s"));
+
 	for (i = 1; i <= count; i++) {
 		FONT_DB     * db = font_db;
 		char          _tmp[1000];
@@ -471,17 +476,20 @@ FontInit (short count)
 		BOOL          latn = xFalse;
 		char        * p;
 		short         type, dmy;
+		int           id;
 		
-		vqt_ext_name (GRPH_Vdi, i, info.font_name, &dmy, &type);
+		id = vqt_ext_name (GRPH_Vdi, i, info.font_name, &dmy, &type);
 		isMono   = (type & 0x01 ? 1 : 0);
 		isSymbol = (type & 0x10 ? 1 : 0);
-		
+
 		info.size           = sizeof(info);
 		info.font_name[0]   = '\0';
 		info.family_name[0] = '\0';
 		info.style_name[0]  = '\0';
 		info.pt_cnt         = 0;
-		vqt_xfntinfo (GRPH_Vdi, 0x010F, 0, i, &info);
+
+		vqt_xfntinfo (GRPH_Vdi, 0x010F, id, 0, &info);
+
 		if (info.pt_cnt > 1  &&
 		    info.pt_sizes[info.pt_cnt -1] == info.pt_sizes[info.pt_cnt -2]) {
 			info.pt_cnt--;
@@ -519,14 +527,15 @@ FontInit (short count)
 		if (f_db) {
 			fprintf (f_db, "%i: %u,%u,%u %s\n", info.id,
 			               info.format, isSymbol, isMono, info.file_name1);
-		#if 0
+		//#if 0
 			if (info.format > 2) {
 				fprintf (f_db, "# font   |%s|\n", info.font_name);
 				fprintf (f_db, "# family |%s|\n", info.family_name);
 				fprintf (f_db, "# style  |%s|\n", info.style_name);
+				fprintf (f_db, "# mono   |%s|\n", isMono ? "true" : "false");
 				fflush  (f_db);
 			}
-		#endif
+		//#endif
 		}
 		
 		if (db && db->list) {

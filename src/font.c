@@ -13,6 +13,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #define _GNU_SOURCE
 #include <string.h>
 #include <fnmatch.h>
@@ -268,11 +269,13 @@ RQ_OpenFont (CLIENT * clnt, xOpenFontReq * q)
 		face = *_Font_Match (buf, NULL);
 		
 		if (!face  &&  sscanf (patt, "%ux%u", &w, &h) == 2) {
+
 			sprintf (buf, "*-%u-*-*-*-C-%u0-ISO8859-1", h, w);
 			face = *_Font_Match (buf, NULL);
 			
 			if (!face) {
 				FONTFACE ** prot = &_FONT_List;
+
 				sprintf (buf, "*-Medium-*-*-*-%u-*-*-*-C-*-ISO8859-1", h);
 				while (*(prot = _Font_Match (buf, *prot)) &&
 				       ((*prot)->Type < 2 || (*prot)->isSymbol));
@@ -321,7 +324,8 @@ RQ_OpenFont (CLIENT * clnt, xOpenFontReq * q)
 					*prot      = face;
 				}
 			}
-		}
+		} 
+
 		if (!face) {
 			Bad(Name,, OpenFont,"('%.*s')\n          -> '%s'",
 			           (int)q->nbytes, patt, buf);
@@ -331,7 +335,7 @@ RQ_OpenFont (CLIENT * clnt, xOpenFontReq * q)
 		
 		} else {
 			font->isFont = xTrue;
-			
+
 			if (!face) {
 				FontValues ((p_FONTABLE)font, None);
 			
@@ -460,10 +464,12 @@ RQ_QueryFont (CLIENT * clnt, xQueryFontReq * q)
 		if (face->isMono) {
 			xCharInfo * p = info;
 			short c;
+
 			for (c = face->MinChr; c <= face->MaxChr; c++) {
-				p->leftSideBearing  = face->MaxLftBr;
-				p->rightSideBearing = face->MaxRgtBr;
+				p->leftSideBearing  = 0;
+				p->rightSideBearing = 0;
 				p->characterWidth   = face->MaxWidth;
+
 				p->ascent           = asc [_FONT_AscDesc[c] >> 4];
 				p->descent          = desc[_FONT_AscDesc[c] &  0x0F];
 				p->attributes       = 0;
@@ -476,15 +482,19 @@ RQ_QueryFont (CLIENT * clnt, xQueryFontReq * q)
 		} else {
 			xCharInfo * p = info;
 			short c, ld, rd, w;
+			int16_t res;
+
 			vst_font    (GRPH_Vdi, face->Index);
 			vst_effects (GRPH_Vdi, face->Effects);
 			vst_point   (GRPH_Vdi, face->Points, &c, &c, &c, &c);
 			for (c = face->MinChr; c <= face->MaxChr; ++c) {
-				vqt_width (GRPH_Vdi, (face->CharSet ? face->CharSet[c] : c),
-				           &w, &ld, &rd);
-				p->leftSideBearing  = ld;
-				p->rightSideBearing = w - rd;
+				res = vqt_width (GRPH_Vdi, (face->CharSet ? face->CharSet[c] : c),
+				                 &w, &ld, &rd);
+				
+				p->leftSideBearing  = 0;
+				p->rightSideBearing = 0;
 				p->characterWidth   = w;
+
 				p->ascent           = asc [_FONT_AscDesc[c] >> 4];
 				p->descent          = desc[_FONT_AscDesc[c] &  0x0F];
 				p->attributes       = 0;
@@ -559,6 +569,7 @@ RQ_QueryTextExtents (CLIENT * clnt, xQueryTextExtentsReq * q)
 		
 		ClntReply (QueryTextExtents,, "PPlll");
 	}
+
 }
 
 
