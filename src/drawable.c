@@ -26,6 +26,7 @@
 #include "gemx.h"
 
 #include <stdio.h>
+#include <stdint.h>
 
 #include <X11/X.h>
 
@@ -800,8 +801,10 @@ _Image_Text (p_DRAWABLE draw, GC * gc,
 		hdl  = PmapVdi (draw.Pixmap, gc, xTrue);
 	}
 	if (nClp) {
-		BOOL    bg_draw = (gc->Background != G_WHITE);
+		BOOL    bg_draw = ((gc->Background != G_WHITE) || (GRPH_Depth > 8));
 		short * arr;
+		int16_t baseline; 
+
 		if (is8N16) {
 			arr = alloca (sizeof(short) * len);
 			if(gc->FontFace)
@@ -817,20 +820,42 @@ _Image_Text (p_DRAWABLE draw, GC * gc,
 			if(gc->FontFace)
 				arr = FontTrans_W (arr, text, len, gc->FontFace);
 		}
-		//if (!bg_draw) {
+		if (!bg_draw) {
 			vswr_mode (hdl, MD_REPLACE);
-			VST_COLOR (hdl, gc->Foreground);
-		//}
+		} else {
+			int16_t distance[5];
+			int16_t effects[3];
+			int16_t ignore1, ignore2, ignore3;
+			vqt_fontinfo (hdl, &ignore1, &ignore2, distance, &ignore3, effects);
+			baseline = distance[4]; 
+		}
+
+		VST_COLOR (hdl, gc->Foreground);
+
 		do {
 			vs_clip_pxy (hdl, (PXY*)(sect++));
-			//if (bg_draw) {
-				vswr_mode  (hdl, MD_ERASE);
-				VST_COLOR  (hdl, gc->Background);
-				v_gtext16n (hdl, orig, arr, len);
+
+			// Need to draw the background first for our text
+			if (bg_draw) {
+				int16_t erasure[8];
+				int ie;
+
+				vswr_mode (hdl, MD_REPLACE);
+				VSF_COLOR (hdl, gc->Background);
+				vqt_extent16n (hdl, arr, len, erasure);
+			
+				for(ie=0; ie<8; ie+=2) {
+					erasure[ie] += orig.x;
+					erasure[ie+1] += (orig.y - baseline);
+				}
+
+				v_fillarea(hdl, 4, erasure);
+
 				vswr_mode  (hdl, MD_TRANS);
-				VST_COLOR  (hdl, gc->Foreground);
-			//}
+			}
+
 			v_gtext16n (hdl, orig, arr, len);
+
 		} while (--nClp);
 		vs_clip_off (hdl);
 		
