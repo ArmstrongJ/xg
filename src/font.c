@@ -182,6 +182,119 @@ _Font_Match (const char * pattern, FONTFACE * start)
 	return face;
 }
 
+//------------------------------------------------------------------------------
+static size_t
+_Font_Query_Populate (CLIENT * clnt, FONTFACE * face, xQueryFontReply * r, BOOL includeCharInfo)
+{
+	size_t      size  = 0;
+	CARD32      n_inf = face->MaxChr - face->MinChr +1;
+	xCharInfo * info;
+	short       asc[5], desc[5];
+	
+	memcpy (&r->minBounds, &face->MinLftBr, (sizeof(xCharInfo) *2) +4);
+	r->minCharOrByte2 = face->MinChr;
+	r->maxCharOrByte2 = face->MaxChr;
+	r->defaultChar    = ' ';
+	r->drawDirection  = FontLeftToRight;
+	r->minByte1       = 0;
+	r->maxByte1       = 0;
+	r->allCharsExist  = xTrue;
+	r->fontAscent     = face->Ascent;
+	r->fontDescent    = face->Descent;
+	r->nFontProps     = 0;
+	
+	while (1) {
+		Atom * atom = (Atom*)(r +1);
+		if (!(*(atom++) = AtomGet ("FONT", 4, xFalse)) ||
+		    !(*(atom++) = AtomGet (face->Name, face->Length, xFalse))) break;
+		r->nFontProps++;
+		size += sizeof(Atom) *2;
+		break;
+	}
+	if (r->nFontProps && clnt->DoSwap) {
+		Atom * a = (Atom*)(r +1);
+		int    n = r->nFontProps;
+		while (n--) {
+			*a = Swap16(*a);
+			a++;
+		}
+	}
+
+	if (! includeCharInfo)
+		return size;
+
+	info          = (xCharInfo*)((char*)(r +1) + size);
+	r->nCharInfos = n_inf;
+	size         += r->nCharInfos * sizeof(xCharInfo);
+	if (face->isSymbol) {
+		asc[0]  = asc[1]  = asc[2]  = asc[3]  = asc[4]  = face->MaxAsc;
+		desc[0] = desc[1] = desc[2] = desc[3] = desc[4] = face->MaxDesc;
+	} else {
+		asc[0] = 0;
+		asc[1] = face->HalfLine /3;
+		asc[2] = face->HalfLine;
+		asc[3] = face->MaxAsc;
+		asc[4] = face->Ascent;
+		desc[0] = face->MaxDesc;
+		desc[1] = 0;
+		desc[2] = -(face->HalfLine /3);
+		desc[3] = -((face->HalfLine +1) /2);
+		desc[4] = -face->HalfLine;
+	}
+	if (face->isMono) {
+		xCharInfo * p = info;
+		short c;
+
+		for (c = face->MinChr; c <= face->MaxChr; c++) {
+			p->leftSideBearing  = 0;
+			p->rightSideBearing = 0;
+			p->characterWidth   = face->MaxWidth;
+
+			p->ascent           = asc [_FONT_AscDesc[c] >> 4];
+			p->descent          = desc[_FONT_AscDesc[c] &  0x0F];
+			p->attributes       = 0;
+			p++;
+		}
+	
+	} else if (face->CharInfos) {
+		memcpy (info, face->CharInfos, size);
+	
+	} else {
+		xCharInfo * p = info;
+		short c, ld, rd, w;
+		int16_t res;
+
+		vst_font    (GRPH_Vdi, face->Index);
+		vst_effects (GRPH_Vdi, face->Effects);
+		vst_point   (GRPH_Vdi, face->Points, &c, &c, &c, &c);
+		for (c = face->MinChr; c <= face->MaxChr; ++c) {
+			res = vqt_width (GRPH_Vdi, (face->CharSet ? face->CharSet[c] : c),
+			                 &w, &ld, &rd);
+			
+			p->leftSideBearing  = 0;
+			p->rightSideBearing = 0;
+			p->characterWidth   = w;
+
+			p->ascent           = asc [_FONT_AscDesc[c] >> 4];
+			p->descent          = desc[_FONT_AscDesc[c] &  0x0F];
+			p->attributes       = 0;
+			p++;
+		}
+		if ((face->CharInfos = malloc (size))) {
+			memcpy (face->CharInfos, info, size);
+		}
+	}
+	if (clnt->DoSwap) {
+		short * p = (short*)info;
+		int     n = size /2;
+		while (n--) {
+			*p = Swap16(*p);
+			p++;
+		}
+	}
+
+	return size;
+}
 
 //==============================================================================
 //
@@ -404,114 +517,15 @@ RQ_QueryFont (CLIENT * clnt, xQueryFontReq * q)
 		Bad(Font, q->id, QueryFont,);
 	
 	} else { //..................................................................
-	
 		FONTFACE *  face  = font->FontFace;
 		size_t      size  = 0;
 		CARD32      n_inf = face->MaxChr - face->MinChr +1;
-		xCharInfo * info;
-		short       asc[5], desc[5];
 		ClntReplyPtr (QueryFont, r,
-		              (sizeof(Atom) *2) + (n_inf * sizeof(xCharInfo)));
+	              (sizeof(Atom) *2) + (n_inf * sizeof(xCharInfo)));
 		
 		PRINT (QueryFont," F:%lX", q->id);
-		
-		memcpy (&r->minBounds, &face->MinLftBr, (sizeof(xCharInfo) *2) +4);
-		r->minCharOrByte2 = face->MinChr;
-		r->maxCharOrByte2 = face->MaxChr;
-		r->defaultChar    = ' ';
-		r->drawDirection  = FontLeftToRight;
-		r->minByte1       = 0;
-		r->maxByte1       = 0;
-		r->allCharsExist  = xTrue;
-		r->fontAscent     = face->Ascent;
-		r->fontDescent    = face->Descent;
-		r->nFontProps     = 0;
-		
-		while (1) {
-			Atom * atom = (Atom*)(r +1);
-			if (!(*(atom++) = AtomGet ("FONT", 4, xFalse)) ||
-			    !(*(atom++) = AtomGet (face->Name, face->Length, xFalse))) break;
-			r->nFontProps++;
-			size += sizeof(Atom) *2;
-			break;
-		}
-		if (r->nFontProps && clnt->DoSwap) {
-			Atom * a = (Atom*)(r +1);
-			int    n = r->nFontProps;
-			while (n--) {
-				*a = Swap16(*a);
-				a++;
-			}
-		}
-		info          = (xCharInfo*)((char*)(r +1) + size);
-		r->nCharInfos = n_inf;
-		size         += r->nCharInfos * sizeof(xCharInfo);
-		if (face->isSymbol) {
-			asc[0]  = asc[1]  = asc[2]  = asc[3]  = asc[4]  = face->MaxAsc;
-			desc[0] = desc[1] = desc[2] = desc[3] = desc[4] = face->MaxDesc;
-		} else {
-			asc[0] = 0;
-			asc[1] = face->HalfLine /3;
-			asc[2] = face->HalfLine;
-			asc[3] = face->MaxAsc;
-			asc[4] = face->Ascent;
-			desc[0] = face->MaxDesc;
-			desc[1] = 0;
-			desc[2] = -(face->HalfLine /3);
-			desc[3] = -((face->HalfLine +1) /2);
-			desc[4] = -face->HalfLine;
-		}
-		if (face->isMono) {
-			xCharInfo * p = info;
-			short c;
 
-			for (c = face->MinChr; c <= face->MaxChr; c++) {
-				p->leftSideBearing  = 0;
-				p->rightSideBearing = 0;
-				p->characterWidth   = face->MaxWidth;
-
-				p->ascent           = asc [_FONT_AscDesc[c] >> 4];
-				p->descent          = desc[_FONT_AscDesc[c] &  0x0F];
-				p->attributes       = 0;
-				p++;
-			}
-		
-		} else if (face->CharInfos) {
-			memcpy (info, face->CharInfos, size);
-		
-		} else {
-			xCharInfo * p = info;
-			short c, ld, rd, w;
-			int16_t res;
-
-			vst_font    (GRPH_Vdi, face->Index);
-			vst_effects (GRPH_Vdi, face->Effects);
-			vst_point   (GRPH_Vdi, face->Points, &c, &c, &c, &c);
-			for (c = face->MinChr; c <= face->MaxChr; ++c) {
-				res = vqt_width (GRPH_Vdi, (face->CharSet ? face->CharSet[c] : c),
-				                 &w, &ld, &rd);
-				
-				p->leftSideBearing  = 0;
-				p->rightSideBearing = 0;
-				p->characterWidth   = w;
-
-				p->ascent           = asc [_FONT_AscDesc[c] >> 4];
-				p->descent          = desc[_FONT_AscDesc[c] &  0x0F];
-				p->attributes       = 0;
-				p++;
-			}
-			if ((face->CharInfos = malloc (size))) {
-				memcpy (face->CharInfos, info, size);
-			}
-		}
-		if (clnt->DoSwap) {
-			short * p = (short*)info;
-			int     n = size /2;
-			while (n--) {
-				*p = Swap16(*p);
-				p++;
-			}
-		}
+		size = _Font_Query_Populate (clnt, face, r, xTrue);
 		
 		ClntReply (QueryFont, size, ":::4:::4::4:l");
 	}
@@ -577,10 +591,61 @@ RQ_QueryTextExtents (CLIENT * clnt, xQueryTextExtentsReq * q)
 void
 RQ_ListFontsWithInfo (CLIENT * clnt, xListFontsWithInfoReq * q)
 {
-	PRINT (- X_ListFontsWithInfo," '%.*s' max=%u",
-	       q->nbytes, (char*)(q +1), q->maxNames);
-}
+	//PRINT (- X_ListFontsWithInfo," '%.*s' max=%u",
+	//       q->nbytes, (char*)(q +1), q->maxNames);
 
+	char * patt = (char*)(q+1);
+	FONTFACE  * face = _FONT_List->Next; // skip cursor font
+	CARD16      num  = 0;
+	char        buf[500] = "";
+
+	DEBUG (ListFontsWithInfo," '%.*s' max=%u",
+	       q->nbytes, (char*)(q +1), q->maxNames);
+	
+	_Font_Alias (buf, patt, q->nbytes);
+
+	/* Get a count first */
+	while (face  &&  num < q->maxNames) {
+
+		if (!fnmatch (buf, face->Name, FNM_NOESCAPE|FNM_CASEFOLD)) {
+			num++;
+		}
+		face = face->Next;
+	}
+	
+	/* Start building replies */
+	face = _FONT_List->Next;
+	while (face  &&  num > 0) {
+	
+		if (!fnmatch (buf, face->Name, FNM_NOESCAPE|FNM_CASEFOLD)) {
+			size_t onesize;
+			size_t nameLen = strlen(face->Name);
+			char *name;
+			ClntReplyPtr (ListFontsWithInfo, r, 
+                          (sizeof(Atom) *2) + nameLen);
+
+			onesize = _Font_Query_Populate (clnt, face, (xQueryFontReply *)r, xFalse);
+			r->nameLength = (CARD8)strlen(face->Name);
+			r->nReplies = (CARD32)(--num);
+
+			name = (char *)(r+1) + onesize;
+			memcpy(name, face->Name, nameLen);
+
+			ClntReply(ListFontsWithInfo, onesize+nameLen, ":::4:::4::4:l");
+		}
+		face = face->Next;
+	}
+	
+	/* Send an empty reply now */
+	if(num == 0) {
+		ClntReplyPtr (ListFontsWithInfo, r, 0);
+
+		memset(r, 0, sz_xListFontsWithInfoReply);
+		r->nameLength = (CARD8)0;
+		r->nReplies = (CARD32)0;
+		ClntReply(ListFontsWithInfo, 0, ":::4:::4::4:l");
+	}
+}
 
 //------------------------------------------------------------------------------
 void
